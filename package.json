@@ -16,7 +16,7 @@
     "build": "tsdown",
     "lint": ".yarn/sdks/oxlint/bin/oxlint",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check",
+    "fmt:check": "oxfmt --check --threads=1",
     "test": "vitest run",
     "typecheck": ".yarn/sdks/typescript/bin/tsc --noEmit"
   },
