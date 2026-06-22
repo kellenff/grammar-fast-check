@@ -22,7 +22,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Pin below 22.22 — newer Node releases break Yarn PnP's ESM loader (oxfmt EBADF).
+          node-version: 22.14
           cache: yarn
 
       - name: Install dependencies
