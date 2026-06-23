@@ -1,0 +1,92 @@
+name: Mutation testing
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: mutation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Test
+        run: yarn test
+
+      - name: Load mutation baseline from base branch
+        if: github.event_name == 'pull_request'
+        run: |
+          if git show "${{ github.event.pull_request.base.sha }}:.github/mutation-baseline.json" > /tmp/mutation-baseline.json 2>/dev/null; then
+            echo "baseline_found=true" >> "$GITHUB_ENV"
+          else
+            echo "baseline_found=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Mutation test
+        run: yarn test:mutation
+
+      - name: Compute mutation score
+        run: node .github/scripts/compute-mutation-score.mjs reports/mutation/mutation.json
+
+      - name: Prepare pull request comment
+        if: github.event_name == 'pull_request'
+        run: |
+          baseline_arg="none"
+          if [ "${baseline_found}" = "true" ]; then
+            baseline_arg="/tmp/mutation-baseline.json"
+          fi
+          node .github/scripts/format-mutation-comment.mjs reports/mutation/mutation-score.json "$baseline_arg" 88 > /tmp/mutation-comment.md
+
+      - name: Comment mutation score on pull request
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-tag: '<!-- mutation-report -->'
+          edit-mode: replace
+          body-path: /tmp/mutation-comment.md
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-${{ github.run_id }}
+          path: |
+            reports/mutation/mutation.json
+            reports/mutation/mutation-score.json
+          if-no-files-found: ignore
+
+      - name: Update mutation baseline on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: cp reports/mutation/mutation-score.json .github/mutation-baseline.json
+
+      - name: Commit mutation baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(ci): update mutation score baseline"
+          file_pattern: .github/mutation-baseline.json

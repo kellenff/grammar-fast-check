@@ -37,6 +37,3 @@ jobs:
 
       - name: Test
         run: yarn test
-
-      - name: Mutation test
-        run: yarn test:mutation

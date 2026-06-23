@@ -3,7 +3,7 @@
   "packageManager": "yarn",
   "plugins": ["@stryker-mutator/vitest-runner"],
   "testRunner": "vitest",
-  "reporters": ["clear-text", "progress"],
+  "reporters": ["clear-text", "progress", "json"],
   "mutate": [
     "src/**/*.ts",
     "!src/**/*.test.ts",
