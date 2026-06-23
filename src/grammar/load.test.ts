@@ -9,43 +9,37 @@ const calcEbnfPath = fileURLToPath(new URL('../../examples/calc/calc.ebnf', impo
 const calcNePath = fileURLToPath(new URL('../../examples/calc/calc.ne', import.meta.url));
 
 describe('loadGrammar', () => {
-  it('compiles .ebnf files through the EBNF pipeline', () => {
-    const compiled = loadGrammar(calcEbnfPath);
+  it('compiles .ebnf files through the EBNF front-end', () => {
+    const grammar = loadGrammar(calcEbnfPath);
 
-    expect(compiled.ParserRules.length).toBeGreaterThan(0);
-    expect(compiled.ParserStart).toContain('main');
+    expect(grammar.rules.has('main')).toBe(true);
+    expect(grammar.start).toBe('main');
   });
 
-  it('compiles .ne files as nearley source', () => {
-    const compiled = loadGrammar(calcNePath);
+  it('compiles .ne files through the nearley front-end', () => {
+    const grammar = loadGrammar(calcNePath);
 
-    expect(compiled.ParserRules.length).toBeGreaterThan(0);
-    expect(compiled.ParserStart).toContain('main');
+    expect(grammar.rules.has('main')).toBe(true);
+    expect(grammar.start).toBe('main');
   });
 
   it('detects EBNF files case-insensitively by extension', () => {
     const dir = mkdtempSync(join(tmpdir(), 'grammar-fast-check-'));
     const grammarPath = join(dir, 'grammar.EBNF');
-    writeFileSync(
-      grammarPath,
-      `
-      main ::= "x" ;
-    `,
-    );
+    writeFileSync(grammarPath, 'main ::= "x" ;');
 
-    const compiled = loadGrammar(grammarPath);
+    const grammar = loadGrammar(grammarPath);
 
-    expect(compiled.ParserRules.length).toBeGreaterThan(0);
-    expect(compiled.ParserStart).toContain('main');
+    expect(grammar.rules.get('main')).toEqual({ type: 'literal', value: 'x' });
   });
 });
 
 describe('loadEbnfGrammar', () => {
-  it('reads an EBNF file from disk and compiles it', () => {
-    const compiled = loadEbnfGrammar(calcEbnfPath);
+  it('reads an EBNF file from disk and lowers it to the IR', () => {
+    const grammar = loadEbnfGrammar(calcEbnfPath);
 
-    expect(compiled.ParserRules.length).toBeGreaterThan(0);
-    expect(compiled.ParserStart).toContain('main');
+    expect(grammar.rules.has('digit')).toBe(true);
+    expect(grammar.start).toBe('main');
   });
 });
 

@@ -20,10 +20,18 @@ digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 `;
 
 describe('compileEbnfGrammar', () => {
-  it('compiles EBNF source into a nearley grammar object', () => {
-    const compiled = compileEbnfGrammar(calcEbnf);
+  it('lowers EBNF source into the grammar IR', () => {
+    const grammar = compileEbnfGrammar(calcEbnf);
 
-    expect(compiled.ParserRules.length).toBeGreaterThan(0);
-    expect(compiled.ParserStart).toContain('main');
+    expect(grammar.start).toBe('main');
+    expect([...grammar.rules.keys()]).toEqual([
+      'main',
+      'expr',
+      'term',
+      'factor',
+      'number',
+      'digit',
+    ]);
+    expect(grammar.rules.get('main')).toEqual({ type: 'reference', name: 'expr' });
   });
 });

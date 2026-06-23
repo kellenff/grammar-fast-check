@@ -2,12 +2,12 @@
 
 Derive [`fast-check`](https://github.com/dubzzz/fast-check) `Arbitrary<string>` values from EBNF grammars. Grammars can be written in standard [EBNF](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form) (`.ebnf`) or [nearley](https://nearley.js.org/) syntax (`.ne`).
 
-Phase 1 wraps [`nearley-unparse`](https://github.com/smallhelm/nearley-unparse) as a black-box string generator so you can plug grammar-derived inputs into property-based tests today.
+Grammars are lowered into a small intermediate representation and compiled into a **native fast-check generator** built entirely from fast-check primitives (`letrec`, `oneof`, `tuple`, `array`, `option`, `constantFrom`). Generated strings therefore shrink toward minimal counterexamples, and recursion depth and repetition counts can be bounded directly.
 
 ## Install
 
 ```bash
-yarn add grammar-fast-check fast-check nearley nearley-unparse
+yarn add grammar-fast-check fast-check nearley
 ```
 
 This package uses Yarn Plug'n'Play. If you consume it from a node_modules project, install the peer runtime dependencies above.
@@ -64,7 +64,7 @@ Supported EBNF constructs:
 | Terminals       | `"..."` or `'...'`    | `"+"`           |
 | Comments        | `(* ... *)`           | `(* note *)`    |
 
-EBNF grammars are transpiled to nearley syntax and compiled via nearley's compiler API.
+EBNF grammars are parsed into an intermediate representation and compiled directly into a fast-check generator.
 
 ### Nearley (`.ne`)
 
@@ -72,27 +72,48 @@ EBNF grammars are transpiled to nearley syntax and compiled via nearley's compil
 const arb = grammarArb('./path/to/grammar.ne', 'main');
 ```
 
-Grammars are compiled from source at call time. For repeated use in a test suite, create the arbitrary once and reuse it.
+Nearley grammars are parsed at call time and lowered from nearley's AST, so character classes (`[0-9]`), literals, and EBNF modifiers (`:?`, `:*`, `:+`) are all supported. For repeated use in a test suite, create the arbitrary once and reuse it.
+
+Macros, lexer tokens (`%token`), and `@{% ... %}` post-processors are not part of the generative subset and will raise a clear error (post-processor blocks are ignored).
 
 See [`examples/calc/`](./examples/calc/) for worked arithmetic grammars in both EBNF and nearley syntax with property tests.
 
 ## API
 
-### `grammarArb(grammarPath, startRule)`
+### `grammarArb(grammarPath, startRule, options?)`
 
 Returns `Arbitrary<string>` that generates strings accepted by the grammar, starting from `startRule`. Auto-detects format from the file extension (`.ebnf` or `.ne`).
 
-### `compileEbnfGrammar(source)` / `loadEbnfGrammar(path)`
+`options` bounds the size of generated strings:
 
-Parse standard EBNF source and compile it to nearley's compiled grammar object.
+| Option           | Effect                                                          |
+| ---------------- | -------------------------------------------------------------- |
+| `maxDepth`       | Caps recursion depth through choices and optionals.            |
+| `maxRepetitions` | Caps the number of elements produced for a repetition (`*`/`+`). |
 
-### `parseEbnf(source)` / `emitNearley(grammar)`
+```ts
+const arb = grammarArb('./grammar.ebnf', 'main', { maxDepth: 5, maxRepetitions: 8 });
+```
 
-Lower-level EBNF parser and nearley transpiler. Useful for inspecting or debugging the translation step.
+### `loadGrammar(grammarPath)` / `loadEbnfGrammar(grammarPath)`
 
-### `loadGrammar(grammarPath)` / `compileNearleyGrammar(source)`
+Load a grammar file and lower it into the `Grammar` IR. `loadGrammar` auto-detects `.ebnf` vs `.ne`; `loadEbnfGrammar` always uses the EBNF front-end.
 
-Load and compile grammars. `loadGrammar` accepts `.ebnf` or `.ne` files. `compileNearleyGrammar` compiles nearley source directly.
+### `compileEbnfGrammar(source)` / `compileNearleyGrammar(source)`
+
+Lower EBNF or nearley source into the `Grammar` IR without reading from disk.
+
+### `buildGrammarArbitrary(grammar, startRule, options?)`
+
+Build a fast-check `Arbitrary<string>` from a `Grammar` IR. This is the core of the generator; `grammarArb` is a thin wrapper over `loadGrammar` + `buildGrammarArbitrary`.
+
+### `parseEbnf(source)` / `ebnfToGrammar(grammar)`
+
+Lower-level EBNF parser and IR lowering step. Useful for inspecting or debugging the translation.
+
+### `Grammar` / `GrammarNode` and `buildGrammar` / `sequenceOf` / `choiceOf`
+
+The intermediate representation and helpers for constructing it programmatically.
 
 ## Scripts
 
@@ -105,17 +126,16 @@ Load and compile grammars. `loadGrammar` accepts `.ebnf` or `.ne` files. `compil
 | `yarn fmt` / `yarn fmt:check` | Format with [oxfmt](https://oxc.rs/docs/guide/usage/formatter/quickstart.html)           |
 | `yarn typecheck`              | `tsc --noEmit` with strict settings                                                      |
 
-## Known limitations (Phase 1)
+## Known limitations
 
-These are intentional trade-offs for a fast adapter; Phase 2 targets a native generator.
+The generator is native fast-check, so shrinking, depth control, and repetition bounds all work. Remaining trade-offs:
 
-| Limitation               | Impact                                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| **No shrinking**         | Counterexamples are large random strings. Fine for smoke tests; painful when debugging failures.        |
-| **Black-box randomness** | Cannot bias toward edge cases or constrain depth. Coverage depends on `nearley-unparse`'s internal RNG. |
-| **Strings only**         | No AST output. Cannot assert on generated structure without re-parsing.                                 |
-| **Slow startup**         | Grammars compile per process unless you cache compiled output yourself.                                 |
-| **Depth blowups**        | Deeply recursive grammars can emit very long strings. Keep `numRuns` modest in Phase 1.                 |
+| Limitation              | Impact                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Strings only**        | No AST output. Cannot assert on generated structure without re-parsing.                                             |
+| **Char-class range**    | Character classes are sampled over code points U+0000–U+00FF (ASCII + Latin-1). Astral / wide ranges aren't sampled. |
+| **No nearley macros**   | Macros, lexer tokens (`%token`), and `@{% %}` post-processors are outside the generative subset.                    |
+| **Uniform alternatives** | Choices are weighted uniformly; there is no per-alternative biasing yet.                                            |
 
 ## Development
 
