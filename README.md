@@ -1,6 +1,6 @@
 # grammar-fast-check
 
-Derive [`fast-check`](https://github.com/dubzzz/fast-check) `Arbitrary<string>` values from EBNF grammars written in [nearley](https://nearley.js.org/) syntax.
+Derive [`fast-check`](https://github.com/dubzzz/fast-check) `Arbitrary<string>` values from EBNF grammars. Grammars can be written in standard [EBNF](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form) (`.ebnf`) or [nearley](https://nearley.js.org/) syntax (`.ne`).
 
 Phase 1 wraps [`nearley-unparse`](https://github.com/smallhelm/nearley-unparse) as a black-box string generator so you can plug grammar-derived inputs into property-based tests today.
 
@@ -14,34 +14,85 @@ This package uses Yarn Plug'n'Play. If you consume it from a node_modules projec
 
 ## Usage
 
+### EBNF (`.ebnf`)
+
 ```ts
 import fc from 'fast-check';
 import { grammarArb } from 'grammar-fast-check';
 
-const arb = grammarArb('./path/to/grammar.ne', 'main');
+const arb = grammarArb('./path/to/grammar.ebnf', 'main');
 
 fc.assert(
   fc.property(arb, (source) => {
-    // exercise your parser, evaluator, etc.
     myParser.parse(source);
   }),
   { numRuns: 200 },
 );
 ```
 
-Grammars are compiled from `.ne` source at call time via nearley's compiler API (`src/grammar/load.ts`). For repeated use in a test suite, create the arbitrary once and reuse it.
+Example grammar (`examples/calc/calc.ebnf`):
 
-See [`examples/calc/`](./examples/calc/) for a worked arithmetic grammar with property tests.
+```ebnf
+main ::= expr ;
+
+expr ::= term
+       | expr "+" term
+       | expr "-" term ;
+
+term ::= factor
+       | term "*" factor ;
+
+factor ::= number
+         | "(" expr ")" ;
+
+number ::= digit { digit } ;
+
+digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+```
+
+Supported EBNF constructs:
+
+| Construct       | Syntax                | Example         |
+| --------------- | --------------------- | --------------- |
+| Definition      | `::=` or `=`          | `expr ::= term` |
+| Alternation     | `\|`                  | `a \| b`        |
+| Sequence        | juxtaposition         | `a b c`         |
+| Optional        | `[ expr ]`            | `[ "," item ]`  |
+| Repetition (0+) | `{ expr }` or `expr*` | `{ digit }`     |
+| Repetition (1+) | `expr+`               | `digit+`        |
+| Grouping        | `( expr )`            | `( a b )`       |
+| Terminals       | `"..."` or `'...'`    | `"+"`           |
+| Comments        | `(* ... *)`           | `(* note *)`    |
+
+EBNF grammars are transpiled to nearley syntax and compiled via nearley's compiler API.
+
+### Nearley (`.ne`)
+
+```ts
+const arb = grammarArb('./path/to/grammar.ne', 'main');
+```
+
+Grammars are compiled from source at call time. For repeated use in a test suite, create the arbitrary once and reuse it.
+
+See [`examples/calc/`](./examples/calc/) for worked arithmetic grammars in both EBNF and nearley syntax with property tests.
 
 ## API
 
 ### `grammarArb(grammarPath, startRule)`
 
-Returns `Arbitrary<string>` that generates strings accepted by the grammar, starting from `startRule`.
+Returns `Arbitrary<string>` that generates strings accepted by the grammar, starting from `startRule`. Auto-detects format from the file extension (`.ebnf` or `.ne`).
+
+### `compileEbnfGrammar(source)` / `loadEbnfGrammar(path)`
+
+Parse standard EBNF source and compile it to nearley's compiled grammar object.
+
+### `parseEbnf(source)` / `emitNearley(grammar)`
+
+Lower-level EBNF parser and nearley transpiler. Useful for inspecting or debugging the translation step.
 
 ### `loadGrammar(grammarPath)` / `compileNearleyGrammar(source)`
 
-Lower-level helpers to compile a `.ne` file or source string into nearley's compiled grammar object.
+Load and compile grammars. `loadGrammar` accepts `.ebnf` or `.ne` files. `compileNearleyGrammar` compiles nearley source directly.
 
 ## Scripts
 
