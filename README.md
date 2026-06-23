@@ -2,12 +2,12 @@
 
 Derive [`fast-check`](https://github.com/dubzzz/fast-check) `Arbitrary<string>` values from EBNF grammars. Grammars can be written in standard [EBNF](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form) (`.ebnf`) or [nearley](https://nearley.js.org/) syntax (`.ne`).
 
-Phase 1 wraps [`nearley-unparse`](https://github.com/smallhelm/nearley-unparse) as a black-box string generator so you can plug grammar-derived inputs into property-based tests today.
+Phase 2 builds a native generator from compiled nearley rules using fast-check primitives (`letrec`, `oneof`, `tuple`, and friends). Generated strings participate in fast-check shrinking and depth control.
 
 ## Install
 
 ```bash
-yarn add grammar-fast-check fast-check nearley nearley-unparse
+yarn add grammar-fast-check fast-check nearley
 ```
 
 This package uses Yarn Plug'n'Play. If you consume it from a node_modules project, install the peer runtime dependencies above.
@@ -78,9 +78,27 @@ See [`examples/calc/`](./examples/calc/) for worked arithmetic grammars in both 
 
 ## API
 
-### `grammarArb(grammarPath, startRule)`
+### `grammarArb(grammarPath, startRule, options?)`
 
 Returns `Arbitrary<string>` that generates strings accepted by the grammar, starting from `startRule`. Auto-detects format from the file extension (`.ebnf` or `.ne`).
+
+Optional `options`:
+
+| Option      | Type                                       | Default   | Description                                                |
+| ----------- | ------------------------------------------ | --------- | ---------------------------------------------------------- |
+| `depthSize` | `'small' \| 'medium' \| 'large' \| number` | `'small'` | Controls recursive expansion via fast-check `oneof` depth. |
+
+### `grammarArbFromCompiled(grammar, startRule, options?)`
+
+Same as `grammarArb`, but accepts an already-compiled nearley grammar object. Reuse this when you compile once and generate many times in a test suite.
+
+### `buildGrammarArbitrary(grammar, startRule, options?)`
+
+Lower-level API returning the same `Arbitrary<string>` without reading from disk.
+
+### `buildGrammarDerivationArbitrary(grammar, startRule, options?)`
+
+Returns `Arbitrary<DerivationNode>` before string rendering. Useful for inspecting or asserting on generated structure without re-parsing.
 
 ### `compileEbnfGrammar(source)` / `loadEbnfGrammar(path)`
 
@@ -105,17 +123,14 @@ Load and compile grammars. `loadGrammar` accepts `.ebnf` or `.ne` files. `compil
 | `yarn fmt` / `yarn fmt:check` | Format with [oxfmt](https://oxc.rs/docs/guide/usage/formatter/quickstart.html)           |
 | `yarn typecheck`              | `tsc --noEmit` with strict settings                                                      |
 
-## Known limitations (Phase 1)
+## Known limitations
 
-These are intentional trade-offs for a fast adapter; Phase 2 targets a native generator.
-
-| Limitation               | Impact                                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| **No shrinking**         | Counterexamples are large random strings. Fine for smoke tests; painful when debugging failures.        |
-| **Black-box randomness** | Cannot bias toward edge cases or constrain depth. Coverage depends on `nearley-unparse`'s internal RNG. |
-| **Strings only**         | No AST output. Cannot assert on generated structure without re-parsing.                                 |
-| **Slow startup**         | Grammars compile per process unless you cache compiled output yourself.                                 |
-| **Depth blowups**        | Deeply recursive grammars can emit very long strings. Keep `numRuns` modest in Phase 1.                 |
+| Limitation         | Impact                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| **Strings only**   | No AST output. Derivation trees are available internally but not yet exposed as a public AST type.               |
+| **Slow startup**   | Grammars compile per process unless you cache compiled output yourself via `grammarArbFromCompiled`.             |
+| **Lexer tokens**   | Custom nearley `%token` references require a lexer definition and are not yet supported by the native generator. |
+| **Left recursion** | Handled via fast-check depth biasing; extremely deep or pathological grammars may still produce long strings.    |
 
 ## Development
 

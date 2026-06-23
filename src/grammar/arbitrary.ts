@@ -1,16 +1,23 @@
 import fc from 'fast-check';
-import unparse from 'nearley-unparse';
+import { buildGrammarArbitrary } from './generator/index.js';
 import { loadGrammar, type CompiledNearleyGrammar } from './load.js';
+import type { GrammarArbOptions } from './generator/types.js';
 
-export function grammarArb(grammarPath: string, startRule: string): fc.Arbitrary<string> {
+export function grammarArb(
+  grammarPath: string,
+  startRule: string,
+  options?: GrammarArbOptions,
+): fc.Arbitrary<string> {
   const grammar = loadGrammar(grammarPath);
-  return fc.constant(undefined).map(() => generateFromGrammar(grammar, startRule));
+  return buildGrammarArbitrary(grammar, startRule, options);
 }
 
-function generateFromGrammar(grammar: CompiledNearleyGrammar, startRule: string): string {
-  return unparse(grammar, {
-    start: startRule,
-    max_stack_size: 10,
-    max_loops: 200,
-  });
+export function grammarArbFromCompiled(
+  grammar: CompiledNearleyGrammar,
+  startRule: string,
+  options?: GrammarArbOptions,
+): fc.Arbitrary<string> {
+  return buildGrammarArbitrary(grammar, startRule, options);
 }
+
+export type { GrammarArbOptions } from './generator/types.js';

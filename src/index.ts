@@ -1,4 +1,10 @@
-export { grammarArb } from './grammar/arbitrary.js';
+export { grammarArb, grammarArbFromCompiled, type GrammarArbOptions } from './grammar/arbitrary.js';
+export {
+  buildGrammarArbitrary,
+  buildGrammarDerivationArbitrary,
+  renderDerivation,
+  type DerivationNode,
+} from './grammar/generator/index.js';
 export {
   compileEbnfGrammar,
   compileNearleyGrammar,

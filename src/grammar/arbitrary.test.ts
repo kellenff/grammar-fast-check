@@ -1,39 +1,28 @@
 import fc from 'fast-check';
 import { fileURLToPath } from 'node:url';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const mockUnparse = vi.hoisted(() => vi.fn());
-
-vi.mock('nearley-unparse', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nearley-unparse')>();
-  mockUnparse.mockImplementation(actual.default);
-  return { default: mockUnparse };
-});
-
-import { grammarArb } from './arbitrary.js';
+import { describe, expect, it } from 'vitest';
+import { grammarArb, grammarArbFromCompiled } from './arbitrary.js';
+import { loadGrammar } from './load.js';
 
 const calcNePath = fileURLToPath(new URL('../../examples/calc/calc.ne', import.meta.url));
+const calcEbnfPath = fileURLToPath(new URL('../../examples/calc/calc.ebnf', import.meta.url));
 
 describe('grammarArb', () => {
-  beforeEach(() => {
-    mockUnparse.mockClear();
-  });
-
-  it('forwards generation options to nearley-unparse', () => {
-    fc.sample(grammarArb(calcNePath, 'expr'), 1);
-
-    expect(mockUnparse).toHaveBeenCalledWith(
-      expect.objectContaining({ ParserRules: expect.any(Array) }),
-      {
-        start: 'expr',
-        max_stack_size: 10,
-        max_loops: 200,
-      },
-    );
-  });
-
   it('generates strings for the requested start rule', () => {
     const samples = fc.sample(grammarArb(calcNePath, 'number'), 20);
+
+    expect(samples.every((sample) => /^\d+$/.test(sample))).toBe(true);
+  });
+
+  it('accepts depthSize options for recursive grammars', () => {
+    const samples = fc.sample(grammarArb(calcNePath, 'main', { depthSize: 'small' }), 20);
+
+    expect(samples.every((sample) => sample.length > 0)).toBe(true);
+  });
+
+  it('reuses a compiled grammar via grammarArbFromCompiled', () => {
+    const grammar = loadGrammar(calcEbnfPath);
+    const samples = fc.sample(grammarArbFromCompiled(grammar, 'number'), 10);
 
     expect(samples.every((sample) => /^\d+$/.test(sample))).toBe(true);
   });
