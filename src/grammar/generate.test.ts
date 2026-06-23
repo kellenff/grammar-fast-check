@@ -117,7 +117,30 @@ describe('buildGrammarArbitrary', () => {
       'main',
     );
 
-    expect(fc.sample(arb, 50).every((s) => /^[a-c]$/.test(s))).toBe(true);
+    const samples = fc.sample(arb, 200);
+    expect(samples.every((s) => /^[a-c]$/.test(s))).toBe(true);
+    // Every character in the class must be reachable.
+    expect(new Set(samples)).toEqual(new Set(['a', 'b', 'c']));
+  });
+
+  it('samples the inclusive upper bound of the scanned code point range', () => {
+    const arb = buildGrammarArbitrary(
+      // U+00FF is the last scanned code point; an exclusive loop bound would miss it.
+      grammarFrom({ main: { type: 'charClass', source: '\u00ff', flags: '' } }),
+      'main',
+    );
+
+    expect(fc.sample(arb, 10)).toEqual(Array.from({ length: 10 }, () => '\u00ff'));
+  });
+
+  it('strips stateful regex flags when sampling a character class', () => {
+    const arb = buildGrammarArbitrary(
+      grammarFrom({ main: { type: 'charClass', source: '[a-c]', flags: 'g' } }),
+      'main',
+    );
+
+    // A retained global flag would make `.test` stateful and drop matches.
+    expect(new Set(fc.sample(arb, 200))).toEqual(new Set(['a', 'b', 'c']));
   });
 
   it('caps repetition length with maxRepetitions', () => {
@@ -150,11 +173,19 @@ describe('buildGrammarArbitrary', () => {
       },
     });
 
-    const bounded = buildGrammarArbitrary(recursive, 'expr', { maxDepth: 2 });
-    const samples = fc.sample(bounded, 200);
+    const bounded = buildGrammarArbitrary(recursive, 'expr', { maxDepth: 1 });
+    const samples = fc.sample(bounded, 500);
     expect(samples.every((s) => /^[1+]+$/.test(s))).toBe(true);
-    // depth 2 allows at most a handful of '+' operators.
-    expect(Math.max(...samples.map((s) => (s.match(/\+/g) ?? []).length))).toBeLessThanOrEqual(8);
+    // A depth bound of 1 permits at most a single recursive expansion, so no
+    // sample can contain more than one operator. Without the bound, recursive
+    // expansion produces many more.
+    expect(samples.every((s) => (s.match(/\+/g) ?? []).length <= 1)).toBe(true);
+
+    const unbounded = buildGrammarArbitrary(recursive, 'expr');
+    const unboundedMaxPluses = Math.max(
+      ...fc.sample(unbounded, 500).map((s) => (s.match(/\+/g) ?? []).length),
+    );
+    expect(unboundedMaxPluses).toBeGreaterThan(1);
   });
 
   it('terminates recursive grammars even without explicit depth bounds', () => {
@@ -222,6 +253,36 @@ describe('buildGrammarArbitrary', () => {
     expect(() =>
       buildGrammarArbitrary(grammarFrom({ main: { type: 'reference', name: 'ghost' } }), 'main'),
     ).toThrow(/references undefined rule "ghost"/);
+  });
+
+  it('detects undefined references nested inside every composite node', () => {
+    const ghost: GrammarNode = { type: 'reference', name: 'ghost' };
+
+    const cases: GrammarNode[] = [
+      { type: 'sequence', items: [{ type: 'literal', value: 'a' }, ghost] },
+      { type: 'choice', alternatives: [{ type: 'literal', value: 'a' }, ghost] },
+      { type: 'optional', item: ghost },
+      { type: 'repetition', item: ghost, kind: 'zeroOrMore' },
+    ];
+
+    for (const node of cases) {
+      expect(() => buildGrammarArbitrary(grammarFrom({ main: node }), 'main')).toThrow(
+        /references undefined rule "ghost"/,
+      );
+    }
+  });
+
+  it('treats literal, empty, and char-class nodes as reference-free', () => {
+    const node: GrammarNode = {
+      type: 'sequence',
+      items: [
+        { type: 'empty' },
+        { type: 'literal', value: 'x' },
+        { type: 'charClass', source: '[0-9]', flags: '' },
+      ],
+    };
+
+    expect(() => buildGrammarArbitrary(grammarFrom({ main: node }), 'main')).not.toThrow();
   });
 
   it('throws when a character class matches nothing in range', () => {

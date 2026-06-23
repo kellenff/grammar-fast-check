@@ -41,11 +41,8 @@ export function buildGrammarArbitrary(
     return record;
   });
 
-  const arbitrary = arbitraries[startRule];
-  if (arbitrary === undefined) {
-    throw new Error(`Grammar has no rule named "${startRule}"`);
-  }
-  return arbitrary;
+  // validateReferences has already guaranteed the start rule exists.
+  return arbitraries[startRule]!;
 }
 
 function nodeToArbitrary(
@@ -69,22 +66,11 @@ function nodeToArbitrary(
       const alternatives = node.alternatives.map((alternative) =>
         nodeToArbitrary(alternative, tie, depthIdentifier, options),
       );
-      if (alternatives.length === 1) {
-        return alternatives[0]!;
-      }
-      const constraints =
-        options.maxDepth === undefined
-          ? { depthIdentifier }
-          : { depthIdentifier, maxDepth: options.maxDepth };
-      return fc.oneof(constraints, ...alternatives);
+      return fc.oneof(depthConstraints(depthIdentifier, options), ...alternatives);
     }
     case 'optional': {
       const item = nodeToArbitrary(node.item, tie, depthIdentifier, options);
-      const constraints =
-        options.maxDepth === undefined
-          ? { nil: '', depthIdentifier }
-          : { nil: '', depthIdentifier, maxDepth: options.maxDepth };
-      return fc.option(item, constraints);
+      return fc.option(item, { nil: '', ...depthConstraints(depthIdentifier, options) });
     }
     case 'repetition': {
       const item = nodeToArbitrary(node.item, tie, depthIdentifier, options);
@@ -98,13 +84,18 @@ function nodeToArbitrary(
   }
 }
 
+function depthConstraints(
+  depthIdentifier: fc.DepthIdentifier,
+  options: GrammarArbitraryOptions,
+): { depthIdentifier: fc.DepthIdentifier; maxDepth?: number } {
+  return options.maxDepth === undefined
+    ? { depthIdentifier }
+    : { depthIdentifier, maxDepth: options.maxDepth };
+}
+
+// Sequence nodes always carry at least two items (the IR collapses shorter
+// sequences), so concatenation only needs the multi-element case.
 function concat(arbitraries: fc.Arbitrary<string>[]): fc.Arbitrary<string> {
-  if (arbitraries.length === 0) {
-    return fc.constant('');
-  }
-  if (arbitraries.length === 1) {
-    return arbitraries[0]!;
-  }
   return fc.tuple(...arbitraries).map((parts) => parts.join(''));
 }
 

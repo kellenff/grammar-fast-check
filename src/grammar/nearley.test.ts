@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileNearleyGrammar } from './nearley.js';
+import { compileNearleyGrammar, nearleyAstToGrammar } from './nearley.js';
 
 describe('compileNearleyGrammar', () => {
   it('throws when nearley source cannot be parsed', () => {
@@ -91,5 +91,63 @@ describe('compileNearleyGrammar', () => {
 
   it('rejects unsupported token types such as lexer tokens', () => {
     expect(() => compileNearleyGrammar('main -> %tok\n')).toThrow(/Unsupported nearley token/);
+  });
+});
+
+describe('nearleyAstToGrammar', () => {
+  const rule = (name: string, ...tokens: unknown[][]): unknown => ({
+    name,
+    rules: tokens.map((t) => ({ tokens: t })),
+  });
+
+  it('throws when the AST contains no rule entries', () => {
+    expect(() => nearleyAstToGrammar([])).toThrow(/defines no rules/);
+    expect(() => nearleyAstToGrammar([{ body: ' js ' }])).toThrow(/defines no rules/);
+  });
+
+  it('maps a JavaScript null token to an empty node', () => {
+    const grammar = nearleyAstToGrammar([rule('main', [null])]);
+
+    expect(grammar.rules.get('main')).toEqual({ type: 'empty' });
+  });
+
+  it('throws on an unsupported EBNF modifier', () => {
+    expect(() =>
+      nearleyAstToGrammar([rule('main', [{ ebnf: { literal: 'a' }, modifier: ':@' }])]),
+    ).toThrow(/Unsupported nearley EBNF modifier/);
+  });
+
+  it('treats a subexpression production without tokens as empty', () => {
+    const grammar = nearleyAstToGrammar([
+      rule('main', [{ subexpression: [{ note: 'no tokens' }] }]),
+    ]);
+
+    expect(grammar.rules.get('main')).toEqual({ type: 'empty' });
+  });
+
+  it('treats a null subexpression production as empty', () => {
+    const grammar = nearleyAstToGrammar([rule('main', [{ subexpression: [null] }])]);
+
+    expect(grammar.rules.get('main')).toEqual({ type: 'empty' });
+  });
+
+  it('skips entries that are not rules, macros, or objects', () => {
+    const grammar = nearleyAstToGrammar([
+      null,
+      'not an entry',
+      { config: 'lexer' },
+      rule('main', [{ literal: 'x' }]),
+    ]);
+
+    expect([...grammar.rules.keys()]).toEqual(['main']);
+  });
+
+  it('reports unsupported tokens even when they cannot be serialized', () => {
+    const circular: Record<string, unknown> = {};
+    circular['self'] = circular;
+
+    expect(() => nearleyAstToGrammar([rule('main', [circular])])).toThrow(
+      /Unsupported nearley token/,
+    );
   });
 });

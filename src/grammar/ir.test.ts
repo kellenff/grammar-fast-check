@@ -55,7 +55,9 @@ describe('buildGrammar', () => {
   it('produces no start rule for an empty production list', () => {
     const grammar = buildGrammar([]);
 
-    expect(grammar.start).toBeUndefined();
+    // The `start` key must be absent (not merely undefined) so the grammar
+    // shape matches a front-end that never saw a rule.
+    expect('start' in grammar).toBe(false);
     expect(grammar.rules.size).toBe(0);
   });
 });

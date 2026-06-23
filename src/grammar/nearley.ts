@@ -27,7 +27,12 @@ export function compileNearleyGrammar(grammarSource: string): Grammar {
   return nearleyAstToGrammar(ast);
 }
 
-function nearleyAstToGrammar(ast: readonly unknown[]): Grammar {
+/**
+ * Lower a parsed nearley AST (the array of rule/macro/directive entries the
+ * bootstrapped parser produces) into the {@link Grammar} IR. Exposed separately
+ * from {@link compileNearleyGrammar} so the lowering can be exercised directly.
+ */
+export function nearleyAstToGrammar(ast: readonly unknown[]): Grammar {
   const productions: Array<readonly [string, GrammarNode]> = [];
 
   for (const entry of ast) {

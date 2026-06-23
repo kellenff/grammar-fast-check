@@ -86,9 +86,9 @@ Returns `Arbitrary<string>` that generates strings accepted by the grammar, star
 
 `options` bounds the size of generated strings:
 
-| Option           | Effect                                                          |
-| ---------------- | -------------------------------------------------------------- |
-| `maxDepth`       | Caps recursion depth through choices and optionals.            |
+| Option           | Effect                                                           |
+| ---------------- | ---------------------------------------------------------------- |
+| `maxDepth`       | Caps recursion depth through choices and optionals.              |
 | `maxRepetitions` | Caps the number of elements produced for a repetition (`*`/`+`). |
 
 ```ts
@@ -130,12 +130,12 @@ The intermediate representation and helpers for constructing it programmatically
 
 The generator is native fast-check, so shrinking, depth control, and repetition bounds all work. Remaining trade-offs:
 
-| Limitation              | Impact                                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Strings only**        | No AST output. Cannot assert on generated structure without re-parsing.                                             |
-| **Char-class range**    | Character classes are sampled over code points U+0000–U+00FF (ASCII + Latin-1). Astral / wide ranges aren't sampled. |
-| **No nearley macros**   | Macros, lexer tokens (`%token`), and `@{% %}` post-processors are outside the generative subset.                    |
-| **Uniform alternatives** | Choices are weighted uniformly; there is no per-alternative biasing yet.                                            |
+| Limitation               | Impact                                                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| **Strings only**         | No AST output. Cannot assert on generated structure without re-parsing.                                              |
+| **Char-class range**     | Character classes are sampled over code points U+0000–U+00FF (ASCII + Latin-1). Astral / wide ranges aren't sampled. |
+| **No nearley macros**    | Macros, lexer tokens (`%token`), and `@{% %}` post-processors are outside the generative subset.                     |
+| **Uniform alternatives** | Choices are weighted uniformly; there is no per-alternative biasing yet.                                             |
 
 ## Development
 
