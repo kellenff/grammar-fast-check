@@ -11,6 +11,8 @@ function emitExpression(expression: EbnfExpression): string {
       return expression.name;
     case 'terminal':
       return quoteTerminal(expression.value);
+    case 'charClass':
+      throw new Error('Character classes are only supported in nearley grammars');
     case 'sequence':
       return expression.items.map(emitExpression).join(' ');
     case 'alternation':

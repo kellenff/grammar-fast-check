@@ -7,6 +7,7 @@ import { parseEbnf } from './parse.js';
 export type { EbnfExpression, EbnfGrammar, EbnfRule } from './ast.js';
 export { emitNearley } from './emit.js';
 export { parseEbnf } from './parse.js';
+export { ebnfToArbitrary, type GrammarArbitraryOptions } from './toArbitrary.js';
 
 export function compileEbnfGrammar(source: string): CompiledNearleyGrammar {
   const grammar = parseEbnf(source);

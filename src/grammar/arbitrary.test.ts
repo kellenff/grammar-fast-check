@@ -1,40 +1,37 @@
 import fc from 'fast-check';
 import { fileURLToPath } from 'node:url';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const mockUnparse = vi.hoisted(() => vi.fn());
-
-vi.mock('nearley-unparse', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nearley-unparse')>();
-  mockUnparse.mockImplementation(actual.default);
-  return { default: mockUnparse };
-});
-
+import { describe, expect, it } from 'vitest';
 import { grammarArb } from './arbitrary.js';
 
 const calcNePath = fileURLToPath(new URL('../../examples/calc/calc.ne', import.meta.url));
+const calcEbnfPath = fileURLToPath(new URL('../../examples/calc/calc.ebnf', import.meta.url));
 
 describe('grammarArb', () => {
-  beforeEach(() => {
-    mockUnparse.mockClear();
-  });
-
-  it('forwards generation options to nearley-unparse', () => {
-    fc.sample(grammarArb(calcNePath, 'expr'), 1);
-
-    expect(mockUnparse).toHaveBeenCalledWith(
-      expect.objectContaining({ ParserRules: expect.any(Array) }),
-      {
-        start: 'expr',
-        max_stack_size: 10,
-        max_loops: 200,
-      },
-    );
-  });
-
-  it('generates strings for the requested start rule', () => {
+  it('generates strings for the requested start rule from nearley grammars', () => {
     const samples = fc.sample(grammarArb(calcNePath, 'number'), 20);
 
     expect(samples.every((sample) => /^\d+$/.test(sample))).toBe(true);
+  });
+
+  it('generates strings for the requested start rule from EBNF grammars', () => {
+    const samples = fc.sample(grammarArb(calcEbnfPath, 'number'), 20);
+
+    expect(samples.every((sample) => /^\d+$/.test(sample))).toBe(true);
+  });
+
+  it('uses fast-check shrinking for generated strings', () => {
+    const arb = grammarArb(calcEbnfPath, 'main');
+
+    try {
+      fc.assert(
+        fc.property(arb, (source) => source.length < 1),
+        { numRuns: 50 },
+      );
+      throw new Error('Expected property to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/Counterexample: \[".+"\]/);
+      expect((error as Error).message).toContain('Shrunk');
+    }
   });
 });

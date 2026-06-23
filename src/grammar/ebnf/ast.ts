@@ -1,6 +1,7 @@
 export type EbnfExpression =
   | { type: 'identifier'; name: string }
   | { type: 'terminal'; value: string }
+  | { type: 'charClass'; chars: string[] }
   | { type: 'sequence'; items: EbnfExpression[] }
   | { type: 'alternation'; items: EbnfExpression[] }
   | { type: 'optional'; item: EbnfExpression }
