@@ -1,0 +1,10 @@
+{
+  "mutationScore": 91.19,
+  "mutationScoreBasedOnCoveredCode": 93.95,
+  "killed": 473,
+  "timeout": 24,
+  "survived": 32,
+  "noCoverage": 16,
+  "errors": 0,
+  "totalMutants": 545
+}

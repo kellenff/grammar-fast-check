@@ -96,13 +96,14 @@ Load and compile grammars. `loadGrammar` accepts `.ebnf` or `.ne` files. `compil
 
 ## Scripts
 
-| Script                        | Description                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| `yarn build`                  | Bundle library output with [tsdown](https://tsdown.dev/)                       |
-| `yarn test`                   | Run vitest property tests                                                      |
-| `yarn lint`                   | Type-aware [oxlint](https://oxc.rs/docs/guide/usage/linter/type-aware.html)    |
-| `yarn fmt` / `yarn fmt:check` | Format with [oxfmt](https://oxc.rs/docs/guide/usage/formatter/quickstart.html) |
-| `yarn typecheck`              | `tsc --noEmit` with strict settings                                            |
+| Script                        | Description                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------------- |
+| `yarn build`                  | Bundle library output with [tsdown](https://tsdown.dev/)                                 |
+| `yarn test`                   | Run vitest property and unit tests                                                       |
+| `yarn test:mutation`          | Run Stryker mutation tests locally (also runs in the `Mutation testing` workflow on PRs) |
+| `yarn lint`                   | Type-aware [oxlint](https://oxc.rs/docs/guide/usage/linter/type-aware.html)              |
+| `yarn fmt` / `yarn fmt:check` | Format with [oxfmt](https://oxc.rs/docs/guide/usage/formatter/quickstart.html)           |
+| `yarn typecheck`              | `tsc --noEmit` with strict settings                                                      |
 
 ## Known limitations (Phase 1)
 
