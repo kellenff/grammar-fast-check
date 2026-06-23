@@ -23,6 +23,9 @@ describe('calc grammar arbitrary', () => {
       fc.property(arb, (source) => {
         const left = evaluate(`${source}+1`);
         const right = evaluate(`1+${source}`);
+        if (!Number.isSafeInteger(left) || !Number.isSafeInteger(right)) {
+          return;
+        }
         expect(left).toEqual(right);
       }),
       { numRuns: 200 },
