@@ -88,5 +88,5 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ci): update mutation score baseline"
+          commit_message: 'chore(ci): update mutation score baseline'
           file_pattern: .github/mutation-baseline.json

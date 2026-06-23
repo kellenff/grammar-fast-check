@@ -3,11 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import {
-  compileNearleyGrammar,
-  loadEbnfGrammar,
-  loadGrammar,
-} from './load.js';
+import { compileNearleyGrammar, loadEbnfGrammar, loadGrammar } from './load.js';
 
 const calcEbnfPath = fileURLToPath(new URL('../../examples/calc/calc.ebnf', import.meta.url));
 const calcNePath = fileURLToPath(new URL('../../examples/calc/calc.ne', import.meta.url));

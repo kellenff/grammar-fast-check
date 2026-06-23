@@ -6,9 +6,7 @@ const breakThreshold = Number(process.argv[4] ?? '88');
 
 const score = JSON.parse(readFileSync(scorePath, 'utf8'));
 const baseline =
-  baselinePath && baselinePath !== 'none'
-    ? JSON.parse(readFileSync(baselinePath, 'utf8'))
-    : null;
+  baselinePath && baselinePath !== 'none' ? JSON.parse(readFileSync(baselinePath, 'utf8')) : null;
 
 const lines = [
   '<!-- mutation-report -->',

@@ -4,11 +4,7 @@
   "plugins": ["@stryker-mutator/vitest-runner"],
   "testRunner": "vitest",
   "reporters": ["clear-text", "progress", "json"],
-  "mutate": [
-    "src/**/*.ts",
-    "!src/**/*.test.ts",
-    "!src/**/*.d.ts"
-  ],
+  "mutate": ["src/**/*.ts", "!src/**/*.test.ts", "!src/**/*.d.ts"],
   "vitest": {
     "configFile": "vitest.config.ts",
     "related": false
