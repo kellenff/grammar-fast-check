@@ -1,9 +1,9 @@
 {
-  "mutationScore": 91.19,
-  "mutationScoreBasedOnCoveredCode": 93.95,
-  "killed": 473,
-  "timeout": 24,
-  "survived": 32,
+  "mutationScore": 90.28,
+  "mutationScoreBasedOnCoveredCode": 93.01,
+  "killed": 467,
+  "timeout": 25,
+  "survived": 37,
   "noCoverage": 16,
   "errors": 0,
   "totalMutants": 545
