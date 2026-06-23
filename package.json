@@ -1,7 +1,7 @@
 {
   "name": "grammar-fast-check",
   "version": "0.1.0",
-  "description": "Derive fast-check Arbitrary<string> values from EBNF grammars (nearley syntax)",
+  "description": "Derive fast-check Arbitrary<string> values from EBNF grammars (.ebnf) or nearley syntax (.ne)",
   "files": [
     "dist"
   ],
